@@ -94,4 +94,45 @@ abstract class TransactionDao {
 
     @Query("SELECT category, SUM(amount) as total FROM transactions WHERE type = 'Expense' AND timestamp BETWEEN :startOfMonth AND :endOfMonth GROUP BY category")
     abstract fun getMonthlyExpensesByCategory(startOfMonth: Long, endOfMonth: Long): Flow<List<CategoryTotal>>
+
+    @Transaction
+    open suspend fun deleteTransactionAndRevertBalance(id: Long) {
+        val tx = getTransactionById(id) ?: return
+        when (tx.type) {
+            TransactionType.Income -> {
+                tx.destinationAccountId?.let { subtractFromBalance(it, tx.amount) }
+            }
+            TransactionType.Expense -> {
+                tx.sourceAccountId?.let { addToBalance(it, tx.amount) }
+            }
+            TransactionType.Transfer -> {
+                tx.destinationAccountId?.let { subtractFromBalance(it, tx.amount) }
+                tx.sourceAccountId?.let { addToBalance(it, tx.amount) }
+            }
+        }
+        deleteTransactionById(id)
+    }
+
+    @Transaction
+    open suspend fun updateTransactionAndBalance(oldTx: TransactionEntity, newTx: TransactionEntity) {
+        // Revert old balance
+        when (oldTx.type) {
+            TransactionType.Income -> oldTx.destinationAccountId?.let { subtractFromBalance(it, oldTx.amount) }
+            TransactionType.Expense -> oldTx.sourceAccountId?.let { addToBalance(it, oldTx.amount) }
+            TransactionType.Transfer -> {
+                oldTx.destinationAccountId?.let { subtractFromBalance(it, oldTx.amount) }
+                oldTx.sourceAccountId?.let { addToBalance(it, oldTx.amount) }
+            }
+        }
+        // Apply new balance
+        when (newTx.type) {
+            TransactionType.Income -> newTx.destinationAccountId?.let { addToBalance(it, newTx.amount) }
+            TransactionType.Expense -> newTx.sourceAccountId?.let { subtractFromBalance(it, newTx.amount) }
+            TransactionType.Transfer -> {
+                newTx.sourceAccountId?.let { subtractFromBalance(it, newTx.amount) }
+                newTx.destinationAccountId?.let { addToBalance(it, newTx.amount) }
+            }
+        }
+        updateTransaction(newTx)
+    }
 }

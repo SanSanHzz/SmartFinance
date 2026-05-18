@@ -23,6 +23,11 @@ class TransactionRepository(private val dao: TransactionDao) {
 
     suspend fun deleteTransactionById(id: Long) = dao.deleteTransactionById(id)
 
+    suspend fun deleteTransactionAndRevertBalance(id: Long) = dao.deleteTransactionAndRevertBalance(id)
+
+    suspend fun updateTransactionAndBalance(oldTx: TransactionEntity, newTx: TransactionEntity) =
+        dao.updateTransactionAndBalance(oldTx, newTx)
+
     suspend fun insertIncome(transaction: TransactionEntity, accountId: Long) =
         dao.insertIncome(transaction, accountId)
 

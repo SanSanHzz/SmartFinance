@@ -197,11 +197,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateTransaction(transaction: TransactionEntity) {
-        viewModelScope.launch { repository.updateTransaction(transaction) }
+        viewModelScope.launch {
+            val oldTx = repository.getTransactionById(transaction.id)
+            if (oldTx != null) {
+                repository.updateTransactionAndBalance(oldTx, transaction)
+            }
+        }
     }
 
     fun deleteTransaction(id: Long) {
-        viewModelScope.launch { repository.deleteTransactionById(id) }
+        viewModelScope.launch { repository.deleteTransactionAndRevertBalance(id) }
     }
 
     fun seedSampleData() {
