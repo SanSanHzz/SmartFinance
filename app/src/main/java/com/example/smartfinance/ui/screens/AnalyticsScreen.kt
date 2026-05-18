@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.smartfinance.ui.components.MascotAvatar
+import com.example.smartfinance.util.CategoryUtils
 import com.example.smartfinance.ui.components.PieChart
 import com.example.smartfinance.ui.components.getMascotForCategory
 import com.example.smartfinance.ui.components.pieColors
@@ -59,7 +60,7 @@ fun AnalyticsScreen(
 
     val slices = state.categoryBreakdown.mapIndexed { idx, cat ->
         PieSlice(
-            label = cat.category,
+            label = CategoryUtils.getDisplayNameWithFallback(cat.category, emptyList()),
             value = cat.total.toFloat(),
             color = pieColors[idx % pieColors.size]
         )

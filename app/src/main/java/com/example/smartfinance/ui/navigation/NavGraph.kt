@@ -1,7 +1,6 @@
 package com.example.smartfinance.ui.navigation
 
 import android.app.Activity
-import android.content.Context
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -13,7 +12,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.smartfinance.data.model.TransactionType
-import com.example.smartfinance.ui.screens.AccountScreen
 import com.example.smartfinance.ui.screens.AnalyticsScreen
 import com.example.smartfinance.ui.screens.AssetsListScreen
 import com.example.smartfinance.ui.screens.DashboardScreen
@@ -29,9 +27,7 @@ fun NavGraph(
 ) {
     val context = LocalContext.current
     val restartApp = remember {
-        {
-            (context as? Activity)?.recreate() ?: Unit
-        }
+        { (context as? Activity)?.recreate() ?: Unit }
     }
 
     NavHost(navController = navController, startDestination = "dashboard") {
@@ -43,29 +39,16 @@ fun NavGraph(
                         "add_transaction?type=${type.name}&name=${Uri.encode(name)}"
                     )
                 },
-                onNavigateToAnalytics = {
-                    navController.navigate("analytics")
-                },
-                onNavigateToSettings = {
-                    navController.navigate("settings")
-                },
-                onNavigateToAccount = {
-                    navController.navigate("account")
-                },
+                onNavigateToAnalytics = { navController.navigate("analytics") },
+                onNavigateToSettings = { navController.navigate("settings") },
                 onSeedData = { viewModel.seedSampleData() }
             )
         }
         composable(
             route = "add_transaction?type={type}&name={name}",
             arguments = listOf(
-                navArgument("type") {
-                    type = NavType.StringType
-                    defaultValue = "Expense"
-                },
-                navArgument("name") {
-                    type = NavType.StringType
-                    defaultValue = ""
-                }
+                navArgument("type") { type = NavType.StringType; defaultValue = "Expense" },
+                navArgument("name") { type = NavType.StringType; defaultValue = "" }
             )
         ) { backStackEntry ->
             val typeStr = backStackEntry.arguments?.getString("type") ?: "Expense"
@@ -93,19 +76,10 @@ fun NavGraph(
                 onRestartApp = restartApp
             )
         }
-        composable("account") {
-            AccountScreen(
-                viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
         composable(
             route = "assets_list?type={type}",
             arguments = listOf(
-                navArgument("type") {
-                    type = NavType.StringType
-                    defaultValue = "Expense"
-                }
+                navArgument("type") { type = NavType.StringType; defaultValue = "Expense" }
             )
         ) { backStackEntry ->
             val typeStr = backStackEntry.arguments?.getString("type") ?: "Expense"

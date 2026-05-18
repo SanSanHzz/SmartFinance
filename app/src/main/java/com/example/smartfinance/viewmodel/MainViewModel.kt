@@ -9,7 +9,6 @@ import com.example.smartfinance.data.local.CategoryTotal
 import com.example.smartfinance.data.model.TransactionEntity
 import com.example.smartfinance.data.model.TransactionType
 import com.example.smartfinance.data.repository.TransactionRepository
-import com.example.smartfinance.util.EmailSender
 import com.example.smartfinance.util.PdfReportGenerator
 import com.example.smartfinance.util.ReportData
 import kotlinx.coroutines.flow.Flow
@@ -31,14 +30,6 @@ data class DashboardState(
     val isLoading: Boolean = true
 )
 
-data class AccountState(
-    val name: String = "",
-    val email: String = "",
-    val linkedToGmail: Boolean = false,
-    val monthlyReport: Boolean = false,
-    val emailVerified: Boolean = false
-)
-
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: TransactionRepository
     private val prefs = application.getSharedPreferences("smartfinance", Context.MODE_PRIVATE)
@@ -51,24 +42,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _currentLanguage = MutableStateFlow(prefs.getString("language", "en") ?: "en")
     val currentLanguage: StateFlow<String> = _currentLanguage.asStateFlow()
-
-    private val _accountState = MutableStateFlow(
-        AccountState(
-            name = prefs.getString("account_name", "") ?: "",
-            email = prefs.getString("account_email", "") ?: "",
-            linkedToGmail = prefs.getBoolean("account_gmail", false),
-            monthlyReport = prefs.getBoolean("account_report", false),
-            emailVerified = prefs.getBoolean("account_email_verified", false)
-        )
-    )
-    val accountState: StateFlow<AccountState> = _accountState.asStateFlow()
-
-    private val _verificationCode = MutableStateFlow("")
-    private val _verificationSent = MutableStateFlow(false)
-    val verificationSent: StateFlow<Boolean> = _verificationSent.asStateFlow()
-
-    private val _verificationMessage = MutableStateFlow("")
-    val verificationMessage: StateFlow<String> = _verificationMessage.asStateFlow()
 
     private val _reportUri = MutableStateFlow<String?>(null)
     val reportUri: StateFlow<String?> = _reportUri.asStateFlow()
@@ -130,75 +103,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         prefs.edit().putString("language", lang).apply()
     }
 
-    fun saveAccount(name: String, email: String, linkedToGmail: Boolean, monthlyReport: Boolean) {
-        val current = _accountState.value
-        _accountState.value = current.copy(
-            name = name,
-            email = email,
-            linkedToGmail = linkedToGmail,
-            monthlyReport = monthlyReport
-        )
-        prefs.edit()
-            .putString("account_name", name)
-            .putString("account_email", email)
-            .putBoolean("account_gmail", linkedToGmail)
-            .putBoolean("account_report", monthlyReport)
-            .apply()
-    }
-
-    fun sendVerificationCode() {
-        val email = _accountState.value.email
-        if (email.isBlank()) {
-            _verificationMessage.value = "Enter an email first"
-            return
-        }
-        viewModelScope.launch {
-            val code = (100000..999999).random().toString()
-            _verificationCode.value = code
-            val result = EmailSender.sendVerificationCode(email, code)
-            if (result.isSuccess) {
-                _verificationMessage.value = "Code sent to $email"
-            } else {
-                val ctx = getApplication<android.app.Application>()
-                val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
-                    data = android.net.Uri.parse("mailto:$email")
-                    putExtra(android.content.Intent.EXTRA_SUBJECT, "SmartFinance - Verification Code")
-                    putExtra(android.content.Intent.EXTRA_TEXT, "Your verification code is: $code")
-                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                ctx.startActivity(intent)
-                _verificationMessage.value = "Code sent via email app"
-            }
-            _verificationSent.value = true
-        }
-    }
-
-    fun verifyCode(inputCode: String): Boolean {
-        val match = inputCode == _verificationCode.value
-        if (match) {
-            val current = _accountState.value
-            _accountState.value = current.copy(emailVerified = true)
-            prefs.edit().putBoolean("account_email_verified", true).apply()
-            _verificationMessage.value = "Email verified!"
-        } else {
-            _verificationMessage.value = "Incorrect code"
-        }
-        return match
-    }
-
-    fun logout() {
-        _accountState.value = AccountState()
-        prefs.edit()
-            .putString("account_name", "")
-            .putString("account_email", "")
-            .putBoolean("account_gmail", false)
-            .putBoolean("account_report", false)
-            .putBoolean("account_email_verified", false)
-            .apply()
-    }
-
     fun generateReport(context: Context) {
         val state = _dashboardState.value
+        val transactions = _allTransactions.value
         val calendar = Calendar.getInstance()
         val monthStr = String.format("%02d", calendar.get(Calendar.MONTH) + 1)
         val yearStr = calendar.get(Calendar.YEAR).toString()
@@ -211,7 +118,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             healthPercentage = state.healthPercentage,
             categories = categories,
             totalExpenses = state.monthlyExpenses,
-            period = period
+            period = period,
+            transactions = transactions
         )
         val uri = PdfReportGenerator.generateReport(context, data)
         _reportUri.value = uri.toString()

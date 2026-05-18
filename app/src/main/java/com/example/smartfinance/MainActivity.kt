@@ -10,12 +10,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.smartfinance.ui.navigation.NavGraph
 import com.example.smartfinance.ui.theme.SmartFinanceTheme
+import com.example.smartfinance.util.ReportScheduler
 import com.example.smartfinance.viewmodel.MainViewModel
 import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ReportScheduler.schedule(this)
         setContent {
             SmartFinanceTheme {
                 val viewModel: MainViewModel = viewModel()
