@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.smartfinance.data.local.AppDatabase
 import com.example.smartfinance.data.local.CategoryTotal
+import com.example.smartfinance.data.model.AccountEntity
 import com.example.smartfinance.data.model.TransactionEntity
 import com.example.smartfinance.data.model.TransactionType
 import com.example.smartfinance.data.repository.TransactionRepository
@@ -27,6 +28,8 @@ data class DashboardState(
     val topIncomeNames: List<String> = emptyList(),
     val topExpenseNames: List<String> = emptyList(),
     val categoryBreakdown: List<CategoryTotal> = emptyList(),
+    val accounts: List<AccountEntity> = emptyList(),
+    val totalNetWorth: Double = 0.0,
     val isLoading: Boolean = true
 )
 
@@ -52,7 +55,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         val database = AppDatabase.getDatabase(application)
         repository = TransactionRepository(database.transactionDao())
+        seedDefaultAccounts()
         observeData()
+    }
+
+    private fun seedDefaultAccounts() {
+        viewModelScope.launch {
+            val dao = AppDatabase.getDatabase(getApplication()).transactionDao()
+            if (dao.getAccountById(1) == null) {
+                dao.insertAccount(AccountEntity(accountName = "Bank", currentBalance = 1000.0))
+                dao.insertAccount(AccountEntity(accountName = "Cash Wallet", currentBalance = 0.0))
+                dao.insertAccount(AccountEntity(accountName = "Savings", currentBalance = 0.0))
+            }
+        }
     }
 
     private fun observeData() {
@@ -82,9 +97,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             monthlyIncExp,
             topFreq,
             repository.getMonthlyExpensesByCategory(monthStart, monthEnd),
-            repository.getAllTransactions()
-        ) { (income, expenses), (topIncome, topExpense), categories, transactions ->
+            repository.getAllTransactions(),
+            repository.getAllAccountsFlow()
+        ) { (income, expenses), (topIncome, topExpense), categories, transactions, accounts ->
             val healthPct = if (income > 0) (expenses / income * 100).toFloat() else 0f
+            val netWorth = accounts.sumOf { it.currentBalance }
             _dashboardState.value = DashboardState(
                 monthlyIncome = income,
                 monthlyExpenses = expenses,
@@ -92,6 +109,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 topIncomeNames = topIncome.map { it.name },
                 topExpenseNames = topExpense.map { it.name },
                 categoryBreakdown = categories,
+                accounts = accounts,
+                totalNetWorth = netWorth,
                 isLoading = false
             )
             _allTransactions.value = transactions
@@ -111,23 +130,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val yearStr = calendar.get(Calendar.YEAR).toString()
         val period = "$monthStr/$yearStr"
 
-        val categories = state.categoryBreakdown.map { Pair(it.category, it.total) }
         val data = ReportData(
             monthlyIncome = state.monthlyIncome,
             monthlyExpenses = state.monthlyExpenses,
             healthPercentage = state.healthPercentage,
-            categories = categories,
+            categories = state.categoryBreakdown.map { Pair(it.category, it.total) },
             totalExpenses = state.monthlyExpenses,
             period = period,
             transactions = transactions
         )
-        val uri = PdfReportGenerator.generateReport(context, data)
-        _reportUri.value = uri.toString()
+        _reportUri.value = PdfReportGenerator.generateReport(context, data).toString()
     }
 
-    fun clearReportUri() {
-        _reportUri.value = null
-    }
+    fun clearReportUri() { _reportUri.value = null }
 
     fun getTransactionsByType(type: TransactionType): Flow<List<TransactionEntity>> =
         repository.getTransactionsByType(type)
@@ -140,48 +155,67 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         name: String,
         amount: Double,
         place: String?,
-        category: String
+        category: String,
+        accountId: Long? = null,
+        sourceAccountId: Long? = null,
+        destinationAccountId: Long? = null
     ) {
         viewModelScope.launch {
-            repository.insertTransaction(
-                TransactionEntity(
-                    type = type,
-                    name = name,
-                    amount = amount,
-                    place = place,
-                    category = category
-                )
-            )
+            when (type) {
+                TransactionType.Income -> {
+                    val accId = accountId ?: destinationAccountId ?: 1L
+                    repository.insertIncome(
+                        TransactionEntity(type = type, name = name, amount = amount,
+                            place = place, category = category, destinationAccountId = accId),
+                        accId
+                    )
+                }
+                TransactionType.Expense -> {
+                    val accId = accountId ?: sourceAccountId ?: 1L
+                    repository.insertExpense(
+                        TransactionEntity(type = type, name = name, amount = amount,
+                            place = place, category = category, sourceAccountId = accId),
+                        accId
+                    )
+                }
+                TransactionType.Transfer -> {
+                    val from = sourceAccountId ?: 1L
+                    val to = destinationAccountId ?: 2L
+                    repository.executeTransfer(
+                        TransactionEntity(type = type, name = name, amount = amount,
+                            place = place, category = "Transfer",
+                            sourceAccountId = from, destinationAccountId = to),
+                        from, to
+                    )
+                }
+            }
         }
     }
 
     fun updateTransaction(transaction: TransactionEntity) {
-        viewModelScope.launch {
-            repository.updateTransaction(transaction)
-        }
+        viewModelScope.launch { repository.updateTransaction(transaction) }
     }
 
     fun deleteTransaction(id: Long) {
-        viewModelScope.launch {
-            repository.deleteTransactionById(id)
-        }
+        viewModelScope.launch { repository.deleteTransactionById(id) }
     }
 
     fun seedSampleData() {
         viewModelScope.launch {
+            val dao = AppDatabase.getDatabase(getApplication()).transactionDao()
             val samples = listOf(
-                TransactionEntity(type = TransactionType.Income, name = "Salary", amount = 3200.0, category = "Salary"),
-                TransactionEntity(type = TransactionType.Income, name = "Freelance", amount = 500.0, category = "Salary"),
-                TransactionEntity(type = TransactionType.Expense, name = "Burger", amount = 12.50, category = "Food"),
-                TransactionEntity(type = TransactionType.Expense, name = "Pizza", amount = 18.00, category = "Food"),
-                TransactionEntity(type = TransactionType.Expense, name = "Uber", amount = 8.50, category = "Transport"),
-                TransactionEntity(type = TransactionType.Expense, name = "Netflix", amount = 15.99, category = "Entertainment"),
-                TransactionEntity(type = TransactionType.Expense, name = "Amazon Box", amount = 45.00, category = "Online Shopping"),
-                TransactionEntity(type = TransactionType.Expense, name = "Gas", amount = 40.00, category = "Transport"),
-                TransactionEntity(type = TransactionType.Expense, name = "Temu", amount = 23.00, category = "Online Shopping"),
-                TransactionEntity(type = TransactionType.Expense, name = "Coffee", amount = 4.50, category = "Food"),
+                TransactionEntity(type = TransactionType.Income, name = "Salary", amount = 3200.0, category = "Salary", destinationAccountId = 1),
+                TransactionEntity(type = TransactionType.Income, name = "Freelance", amount = 500.0, category = "Salary", destinationAccountId = 1),
+                TransactionEntity(type = TransactionType.Expense, name = "Burger", amount = 12.50, category = "Food", sourceAccountId = 1),
+                TransactionEntity(type = TransactionType.Expense, name = "Pizza", amount = 18.00, category = "Food", sourceAccountId = 1),
+                TransactionEntity(type = TransactionType.Expense, name = "Uber", amount = 8.50, category = "Transport", sourceAccountId = 1),
+                TransactionEntity(type = TransactionType.Expense, name = "Netflix", amount = 15.99, category = "Entertainment", sourceAccountId = 1),
+                TransactionEntity(type = TransactionType.Expense, name = "Amazon Box", amount = 45.00, category = "Online Shopping", sourceAccountId = 1),
+                TransactionEntity(type = TransactionType.Expense, name = "Gas", amount = 40.00, category = "Transport", sourceAccountId = 1),
+                TransactionEntity(type = TransactionType.Expense, name = "Temu", amount = 23.00, category = "Online Shopping", sourceAccountId = 1),
+                TransactionEntity(type = TransactionType.Expense, name = "Coffee", amount = 4.50, category = "Food", sourceAccountId = 1),
             )
-            samples.forEach { repository.insertTransaction(it) }
+            samples.forEach { dao.insertTransactionOnly(it) }
         }
     }
 }

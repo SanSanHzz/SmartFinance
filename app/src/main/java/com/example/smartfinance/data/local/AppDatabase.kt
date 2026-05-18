@@ -4,9 +4,14 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.example.smartfinance.data.model.AccountEntity
 import com.example.smartfinance.data.model.TransactionEntity
 
-@Database(entities = [TransactionEntity::class], version = 1, exportSchema = false)
+@Database(
+    entities = [TransactionEntity::class, AccountEntity::class],
+    version = 2,
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
 
@@ -20,7 +25,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "smartfinance_database"
-                ).build()
+                ).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance
             }

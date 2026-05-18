@@ -12,5 +12,7 @@ data class TransactionEntity(
     val amount: Double,
     val place: String? = null,
     val category: String,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val sourceAccountId: Long? = null,
+    val destinationAccountId: Long? = null
 )

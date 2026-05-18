@@ -1,10 +1,10 @@
 package com.example.smartfinance.ui.screens
 
-import android.app.Activity
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,12 +12,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -37,6 +40,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,6 +51,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.smartfinance.R
+import com.example.smartfinance.data.model.AccountEntity
 import com.example.smartfinance.data.model.TransactionType
 import com.example.smartfinance.ui.components.RingChart
 import com.example.smartfinance.ui.theme.CriticalRed
@@ -72,6 +79,7 @@ fun DashboardScreen(
     val context = LocalContext.current
     val state by viewModel.dashboardState.collectAsState()
     val reportUri by viewModel.reportUri.collectAsState()
+    var showTransferDialog by remember { mutableStateOf(false) }
 
     val healthColor = when {
         state.healthPercentage <= 50f -> HealthyGreen
@@ -92,6 +100,25 @@ fun DashboardScreen(
         }
     }
 
+    if (showTransferDialog) {
+        TransferDialog(
+            accounts = state.accounts,
+            onDismiss = { showTransferDialog = false },
+            onConfirm = { fromId, toId, amount, description ->
+                viewModel.addTransaction(
+                    type = TransactionType.Transfer,
+                    name = description.ifBlank { "Transfer" },
+                    amount = amount,
+                    place = null,
+                    category = "Transfer",
+                    sourceAccountId = fromId,
+                    destinationAccountId = toId
+                )
+                showTransferDialog = false
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -101,10 +128,7 @@ fun DashboardScreen(
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings), tint = DarkOnSurfaceVariant)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkSurface,
-                    titleContentColor = DarkOnSurface
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkSurface, titleContentColor = DarkOnSurface)
             )
         },
         floatingActionButton = {
@@ -130,6 +154,43 @@ fun DashboardScreen(
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // -- My Wallets Section --
+                Text(
+                    text = "My Wallets",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = DarkOnSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(end = 4.dp)
+                ) {
+                    items(state.accounts, key = { it.id }) { account ->
+                        AccountCard(account)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Net Worth + Transfer button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    NetWorthChip(state.totalNetWorth)
+                    OutlinedButton(
+                        onClick = { showTransferDialog = true },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Teal)
+                    ) {
+                        Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
+                        Text("Transfer")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -164,9 +225,7 @@ fun DashboardScreen(
                                 onClick = { onNavigateToForm(TransactionType.Income, name) },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.filledTonalButtonColors(containerColor = DarkSurfaceVariant, contentColor = HealthyGreen)
-                            ) {
-                                Text("+ $name", style = MaterialTheme.typography.labelLarge)
-                            }
+                            ) { Text("+ $name", style = MaterialTheme.typography.labelLarge) }
                         }
                     }
                 }
@@ -197,9 +256,7 @@ fun DashboardScreen(
                                 onClick = { onNavigateToForm(TransactionType.Expense, name) },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.filledTonalButtonColors(containerColor = DarkSurfaceVariant, contentColor = Orange)
-                            ) {
-                                Text("+ $name", style = MaterialTheme.typography.labelLarge)
-                            }
+                            ) { Text("+ $name", style = MaterialTheme.typography.labelLarge) }
                         }
                     }
                 }
@@ -211,9 +268,7 @@ fun DashboardScreen(
                         onClick = onNavigateToAnalytics,
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Purple)
-                    ) {
-                        Text(stringResource(R.string.view_analytics))
-                    }
+                    ) { Text(stringResource(R.string.view_analytics)) }
                     OutlinedButton(
                         onClick = { viewModel.generateReport(context) },
                         modifier = Modifier.weight(1f),
@@ -224,6 +279,48 @@ fun DashboardScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AccountCard(account: AccountEntity) {
+    Card(
+        modifier = Modifier.width(140.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = account.accountName,
+                style = MaterialTheme.typography.labelMedium,
+                color = DarkOnSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "$${String.format("%.2f", account.currentBalance)}",
+                style = MaterialTheme.typography.titleLarge,
+                color = DarkOnSurface
+            )
+        }
+    }
+}
+
+@Composable
+private fun NetWorthChip(totalNetWorth: Double) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Teal.copy(alpha = 0.15f))
+    ) {
+        Row(modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+            Text(
+                text = "Total Net Worth:  ",
+                style = MaterialTheme.typography.labelMedium,
+                color = DarkOnSurfaceVariant
+            )
+            Text(
+                text = "$${String.format("%.2f", totalNetWorth)}",
+                style = MaterialTheme.typography.titleSmall,
+                color = Teal
+            )
         }
     }
 }
