@@ -46,6 +46,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentLanguage = MutableStateFlow(prefs.getString("language", "en") ?: "en")
     val currentLanguage: StateFlow<String> = _currentLanguage.asStateFlow()
 
+    private val _allAccountsState = MutableStateFlow<List<AccountEntity>>(emptyList())
+    val allAccountsState: StateFlow<List<AccountEntity>> = _allAccountsState.asStateFlow()
+
     private val _reportUri = MutableStateFlow<String?>(null)
     val reportUri: StateFlow<String?> = _reportUri.asStateFlow()
 
@@ -63,7 +66,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val dao = AppDatabase.getDatabase(getApplication()).transactionDao()
             if (dao.getAccountById(1) == null) {
-                dao.insertAccount(AccountEntity(accountName = "Bank", currentBalance = 1000.0))
+                dao.insertAccount(AccountEntity(accountName = "Bank", currentBalance = 0.0))
                 dao.insertAccount(AccountEntity(accountName = "Cash Wallet", currentBalance = 0.0))
                 dao.insertAccount(AccountEntity(accountName = "Savings", currentBalance = 0.0))
             }
@@ -102,6 +105,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ) { (income, expenses), (topIncome, topExpense), categories, transactions, accounts ->
             val healthPct = if (income > 0) (expenses / income * 100).toFloat() else 0f
             val netWorth = accounts.sumOf { it.currentBalance }
+            _allAccountsState.value = accounts
             _dashboardState.value = DashboardState(
                 monthlyIncome = income,
                 monthlyExpenses = expenses,

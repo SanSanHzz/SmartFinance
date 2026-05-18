@@ -37,11 +37,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -69,6 +69,7 @@ fun EditTransactionScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val accounts by viewModel.allAccountsState.collectAsState()
     var transaction by remember { mutableStateOf<TransactionEntity?>(null) }
     var type by remember { mutableStateOf(TransactionType.Expense) }
     var txName by remember { mutableStateOf("") }
@@ -76,6 +77,8 @@ fun EditTransactionScreen(
     var place by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("") }
     var categoryExpanded by remember { mutableStateOf(false) }
+    var selectedAccount by remember { mutableStateOf(accounts.firstOrNull()) }
+    var accountExpanded by remember { mutableStateOf(false) }
     var showNewDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var newCategoryName by remember { mutableStateOf("") }
@@ -86,6 +89,8 @@ fun EditTransactionScreen(
         if (t != null) {
             transaction = t; type = t.type; txName = t.name
             amount = t.amount.toString(); place = t.place ?: ""; selectedCategory = t.category
+            val accId = t.sourceAccountId ?: t.destinationAccountId
+            selectedAccount = accounts.find { it.id == accId } ?: accounts.firstOrNull()
         }
     }
 
@@ -97,49 +102,24 @@ fun EditTransactionScreen(
         prefs.edit().putStringSet("custom_categories", updated).apply()
     }
 
-    val isFormValid = txName.isNotBlank() && amount.toDoubleOrNull() != null && amount.toDouble() > 0 && selectedCategory.isNotBlank()
+    val isFormValid = txName.isNotBlank() && amount.toDoubleOrNull() != null && amount.toDouble() > 0 && selectedCategory.isNotBlank() && selectedAccount != null
 
-    if (showNewDialog) {
-        AlertDialog(
-            onDismissRequest = { showNewDialog = false },
-            title = { Text(stringResource(R.string.add_custom_category)) },
-            text = {
-                OutlinedTextField(value = newCategoryName, onValueChange = { newCategoryName = it },
-                    label = { Text(stringResource(R.string.new_category_name)) }, singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = DarkOnSurface, unfocusedTextColor = DarkOnSurface, focusedBorderColor = Teal, unfocusedBorderColor = DarkSurfaceVariant))
-            },
-            confirmButton = { TextButton(onClick = {
-                val trimmed = newCategoryName.trim()
-                if (trimmed.isNotBlank()) {
-                    saveCustomCategories((prefs.getStringSet("custom_categories", emptySet()) ?: emptySet()) + trimmed)
-                    selectedCategory = trimmed; showNewDialog = false; newCategoryName = ""; categoryExpanded = false
-                }
-            }) { Text(stringResource(R.string.add)) } },
-            dismissButton = { TextButton(onClick = { showNewDialog = false }) { Text(stringResource(R.string.cancel)) } }
-        )
-    }
-
-    if (showEditDialog) {
-        AlertDialog(
-            onDismissRequest = { showEditDialog = false },
-            title = { Text("Edit Category") },
-            text = {
-                OutlinedTextField(value = newCategoryName, onValueChange = { newCategoryName = it },
-                    label = { Text("New name") }, singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = DarkOnSurface, unfocusedTextColor = DarkOnSurface, focusedBorderColor = Teal, unfocusedBorderColor = DarkSurfaceVariant))
-            },
-            confirmButton = { TextButton(onClick = {
-                val trimmed = newCategoryName.trim()
-                if (trimmed.isNotBlank()) {
-                    val cats = (prefs.getStringSet("custom_categories", emptySet()) ?: emptySet()).toMutableSet()
-                    cats.remove(editingCategory); cats.add(trimmed); saveCustomCategories(cats)
-                    if (selectedCategory == editingCategory) selectedCategory = trimmed
-                    showEditDialog = false; newCategoryName = ""; categoryExpanded = false
-                }
-            }) { Text(stringResource(R.string.add)) } },
-            dismissButton = { TextButton(onClick = { showEditDialog = false }) { Text(stringResource(R.string.cancel)) } }
-        )
-    }
+    if (showNewDialog) { AlertDialog(
+        onDismissRequest = { showNewDialog = false },
+        title = { Text(stringResource(R.string.add_custom_category)) },
+        text = { OutlinedTextField(value = newCategoryName, onValueChange = { newCategoryName = it }, label = { Text(stringResource(R.string.new_category_name)) }, singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(focusedTextColor = DarkOnSurface, unfocusedTextColor = DarkOnSurface, focusedBorderColor = Teal, unfocusedBorderColor = DarkSurfaceVariant)) },
+        confirmButton = { TextButton(onClick = { val t = newCategoryName.trim(); if (t.isNotBlank()) { saveCustomCategories((prefs.getStringSet("custom_categories", emptySet()) ?: emptySet()) + t); selectedCategory = t; showNewDialog = false; newCategoryName = ""; categoryExpanded = false } }) { Text(stringResource(R.string.add)) } },
+        dismissButton = { TextButton(onClick = { showNewDialog = false }) { Text(stringResource(R.string.cancel)) } }
+    ) }
+    if (showEditDialog) { AlertDialog(
+        onDismissRequest = { showEditDialog = false },
+        title = { Text("Edit Category") },
+        text = { OutlinedTextField(value = newCategoryName, onValueChange = { newCategoryName = it }, label = { Text("New name") }, singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(focusedTextColor = DarkOnSurface, unfocusedTextColor = DarkOnSurface, focusedBorderColor = Teal, unfocusedBorderColor = DarkSurfaceVariant)) },
+        confirmButton = { TextButton(onClick = { val t = newCategoryName.trim(); if (t.isNotBlank()) { val cats = (prefs.getStringSet("custom_categories", emptySet()) ?: emptySet()).toMutableSet(); cats.remove(editingCategory); cats.add(t); saveCustomCategories(cats); if (selectedCategory == editingCategory) selectedCategory = t; showEditDialog = false; newCategoryName = ""; categoryExpanded = false } }) { Text(stringResource(R.string.add)) } },
+        dismissButton = { TextButton(onClick = { showEditDialog = false }) { Text(stringResource(R.string.cancel)) } }
+    ) }
 
     Scaffold(
         topBar = {
@@ -152,6 +132,7 @@ fun EditTransactionScreen(
         containerColor = DarkBackground
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState())) {
+            // Type
             Row(modifier = Modifier.fillMaxWidth()) {
                 FilterChip(selected = type == TransactionType.Income, onClick = { type = TransactionType.Income }, label = { Text(stringResource(R.string.income)) },
                     colors = FilterChipDefaults.filterChipColors(selectedContainerColor = HealthyGreen.copy(alpha = 0.2f), selectedLabelColor = HealthyGreen))
@@ -159,8 +140,30 @@ fun EditTransactionScreen(
                 FilterChip(selected = type == TransactionType.Expense, onClick = { type = TransactionType.Expense }, label = { Text(stringResource(R.string.expenses)) },
                     colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Orange.copy(alpha = 0.2f), selectedLabelColor = Orange))
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            OutlinedTextField(value = txName, onValueChange = { txName = it }, label = { Text(stringResource(com.example.smartfinance.R.string.name) + " *") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Account selector
+            ExposedDropdownMenuBox(expanded = accountExpanded, onExpandedChange = { accountExpanded = !accountExpanded }) {
+                val accLabel = if (type == TransactionType.Income) "To Account" else "From Account"
+                OutlinedTextField(
+                    value = selectedAccount?.accountName ?: "", onValueChange = {}, readOnly = true,
+                    label = { Text(accLabel) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
+                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = DarkOnSurface, unfocusedTextColor = DarkOnSurface, focusedBorderColor = Teal, unfocusedBorderColor = DarkSurfaceVariant)
+                )
+                ExposedDropdownMenu(expanded = accountExpanded, onDismissRequest = { accountExpanded = false }) {
+                    accounts.forEach { acc ->
+                        DropdownMenuItem(
+                            text = { Text("${acc.accountName} ($${String.format("%.2f", acc.currentBalance)})") },
+                            onClick = { selectedAccount = acc; accountExpanded = false }
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(value = txName, onValueChange = { txName = it }, label = { Text(stringResource(R.string.name) + " *") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(focusedTextColor = DarkOnSurface, unfocusedTextColor = DarkOnSurface, focusedBorderColor = Teal, unfocusedBorderColor = DarkSurfaceVariant))
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text(stringResource(R.string.amount) + " *") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
@@ -171,6 +174,7 @@ fun EditTransactionScreen(
                 colors = OutlinedTextFieldDefaults.colors(focusedTextColor = DarkOnSurface, unfocusedTextColor = DarkOnSurface, focusedBorderColor = Teal, unfocusedBorderColor = DarkSurfaceVariant))
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Category dropdown
             ExposedDropdownMenuBox(expanded = categoryExpanded, onExpandedChange = { categoryExpanded = !categoryExpanded }) {
                 val displayText = if (selectedCategory.isNotBlank()) CategoryUtils.getDisplayNameWithFallback(selectedCategory, customCats) else ""
                 OutlinedTextField(value = displayText, onValueChange = {}, readOnly = true, label = { Text(stringResource(R.string.category) + " *") },
@@ -182,17 +186,13 @@ fun EditTransactionScreen(
                         val isCustom = cat in customCats
                         DropdownMenuItem(
                             text = {
-                                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                                     Text(CategoryUtils.getDisplayNameWithFallback(cat, customCats), modifier = Modifier.weight(1f))
                                     if (isCustom) {
                                         IconButton(onClick = { editingCategory = cat; newCategoryName = cat; showEditDialog = true; categoryExpanded = false }) {
                                             Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Teal)
                                         }
-                                        IconButton(onClick = {
-                                            val cats = (prefs.getStringSet("custom_categories", emptySet()) ?: emptySet()).toMutableSet()
-                                            cats.remove(cat); saveCustomCategories(cats)
-                                            if (selectedCategory == cat) selectedCategory = ""
-                                        }) {
+                                        IconButton(onClick = { val cats = (prefs.getStringSet("custom_categories", emptySet()) ?: emptySet()).toMutableSet(); cats.remove(cat); saveCustomCategories(cats); if (selectedCategory == cat) selectedCategory = "" }) {
                                             Icon(Icons.Default.Close, contentDescription = "Delete", tint = CriticalRed)
                                         }
                                     }
