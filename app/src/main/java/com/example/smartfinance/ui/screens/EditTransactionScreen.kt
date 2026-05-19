@@ -58,6 +58,8 @@ import com.example.smartfinance.ui.theme.DarkSurfaceVariant
 import com.example.smartfinance.ui.theme.HealthyGreen
 import com.example.smartfinance.ui.theme.Orange
 import com.example.smartfinance.ui.theme.Teal
+import com.example.smartfinance.util.AmountFormatter
+import com.example.smartfinance.util.AmountVisualTransformation
 import com.example.smartfinance.util.CategoryUtils
 import com.example.smartfinance.viewmodel.MainViewModel
 
@@ -88,7 +90,7 @@ fun EditTransactionScreen(
         val t = viewModel.getTransactionById(transactionId)
         if (t != null) {
             transaction = t; type = t.type; txName = t.name
-            amount = t.amount.toString(); place = t.place ?: ""; selectedCategory = t.category
+            amount = AmountFormatter.format(t.amount.toString()); place = t.place ?: ""; selectedCategory = t.category
             val accId = t.sourceAccountId ?: t.destinationAccountId
             selectedAccount = accounts.find { it.id == accId } ?: accounts.firstOrNull()
         }
@@ -102,7 +104,8 @@ fun EditTransactionScreen(
         prefs.edit().putStringSet("custom_categories", updated).apply()
     }
 
-    val isFormValid = txName.isNotBlank() && amount.toDoubleOrNull() != null && amount.toDouble() > 0 && selectedCategory.isNotBlank() && selectedAccount != null
+    val amountValue = AmountFormatter.parseToDouble(amount)
+    val isFormValid = txName.isNotBlank() && amountValue != null && amountValue > 0 && selectedCategory.isNotBlank() && selectedAccount != null
 
     if (showNewDialog) { AlertDialog(
         onDismissRequest = { showNewDialog = false },
@@ -168,6 +171,7 @@ fun EditTransactionScreen(
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text(stringResource(R.string.amount) + " *") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                visualTransformation = AmountVisualTransformation(),
                 colors = OutlinedTextFieldDefaults.colors(focusedTextColor = DarkOnSurface, unfocusedTextColor = DarkOnSurface, focusedBorderColor = Teal, unfocusedBorderColor = DarkSurfaceVariant))
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(value = place, onValueChange = { place = it }, label = { Text(stringResource(R.string.place_optional)) }, modifier = Modifier.fillMaxWidth(), singleLine = true,
@@ -208,7 +212,7 @@ fun EditTransactionScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
             Button(onClick = {
-                transaction?.let { t -> viewModel.updateTransaction(t.copy(type = type, name = txName.trim(), amount = amount.toDouble(), place = place.trim().ifEmpty { null }, category = selectedCategory)) }
+                transaction?.let { t -> viewModel.updateTransaction(t.copy(type = type, name = txName.trim(), amount = amountValue ?: 0.0, place = place.trim().ifEmpty { null }, category = selectedCategory)) }
                 onNavigateBack()
             }, enabled = isFormValid && transaction != null, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Teal)) {
                 Text(stringResource(R.string.update_transaction))

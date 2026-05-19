@@ -27,6 +27,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import com.example.smartfinance.data.model.AccountEntity
+import com.example.smartfinance.util.AmountFormatter
+import com.example.smartfinance.util.AmountVisualTransformation
 import com.example.smartfinance.ui.theme.DarkOnSurface
 import com.example.smartfinance.ui.theme.DarkSurfaceVariant
 import com.example.smartfinance.ui.theme.Teal
@@ -45,9 +47,10 @@ fun TransferDialog(
     var amountText by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
 
+    val amountValue = AmountFormatter.parseToDouble(amountText)
     val isFormValid = selectedFrom != null && selectedTo != null &&
             selectedFrom?.id != selectedTo?.id &&
-            amountText.toDoubleOrNull() != null && amountText.toDouble() > 0
+            amountValue != null && amountValue > 0
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -106,13 +109,14 @@ fun TransferDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                OutlinedTextField(
-                    value = amountText,
-                    onValueChange = { amountText = it },
-                    label = { Text("Amount") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    OutlinedTextField(
+                        value = amountText,
+                        onValueChange = { amountText = it },
+                        label = { Text("Amount") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        visualTransformation = AmountVisualTransformation(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = DarkOnSurface, unfocusedTextColor = DarkOnSurface,
                         focusedBorderColor = Teal, unfocusedBorderColor = DarkSurfaceVariant
@@ -139,7 +143,7 @@ fun TransferDialog(
                 onClick = {
                     selectedFrom?.let { from ->
                         selectedTo?.let { to ->
-                            onConfirm(from.id, to.id, amountText.toDouble(), description)
+                            onConfirm(from.id, to.id, amountValue ?: 0.0, description)
                         }
                     }
                 },

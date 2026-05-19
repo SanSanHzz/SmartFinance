@@ -58,6 +58,8 @@ import com.example.smartfinance.ui.theme.DarkSurfaceVariant
 import com.example.smartfinance.ui.theme.HealthyGreen
 import com.example.smartfinance.ui.theme.Orange
 import com.example.smartfinance.ui.theme.Teal
+import com.example.smartfinance.util.AmountFormatter
+import com.example.smartfinance.util.AmountVisualTransformation
 import com.example.smartfinance.util.CategoryUtils
 import com.example.smartfinance.viewmodel.MainViewModel
 
@@ -92,7 +94,8 @@ fun TransactionFormScreen(
         prefs.edit().putStringSet("custom_categories", updated).apply()
     }
 
-    val isFormValid = txName.isNotBlank() && amount.toDoubleOrNull() != null && amount.toDouble() > 0 && selectedCategory.isNotBlank() && selectedAccount != null
+    val amountValue = AmountFormatter.parseToDouble(amount)
+    val isFormValid = txName.isNotBlank() && amountValue != null && amountValue > 0 && selectedCategory.isNotBlank() && selectedAccount != null
 
     // New category dialog
     if (showNewDialog) { /* same as before */ AlertDialog(
@@ -165,6 +168,7 @@ fun TransactionFormScreen(
             // Amount
             OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text(stringResource(R.string.amount) + " *") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                visualTransformation = AmountVisualTransformation(),
                 colors = OutlinedTextFieldDefaults.colors(focusedTextColor = DarkOnSurface, unfocusedTextColor = DarkOnSurface, focusedBorderColor = Teal, unfocusedBorderColor = DarkSurfaceVariant))
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -207,7 +211,7 @@ fun TransactionFormScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
             Button(onClick = {
-                viewModel.addTransaction(type, txName.trim(), amount.toDouble(), place.trim().ifEmpty { null }, selectedCategory,
+                viewModel.addTransaction(type, txName.trim(), amountValue ?: 0.0, place.trim().ifEmpty { null }, selectedCategory,
                     accountId = selectedAccount?.id); onNavigateBack()
             }, enabled = isFormValid, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Teal)) {
                 Text(stringResource(R.string.save_transaction))
