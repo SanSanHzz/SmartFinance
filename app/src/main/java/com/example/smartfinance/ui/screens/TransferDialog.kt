@@ -74,7 +74,7 @@ fun TransferDialog(
                     ExposedDropdownMenu(expanded = fromExpanded, onDismissRequest = { fromExpanded = false }) {
                         accounts.forEach { acc ->
                             DropdownMenuItem(
-                                text = { Text("${acc.accountName} ($${String.format("%.2f", acc.currentBalance)})") },
+                                text = { Text("${acc.accountName} ($${AmountFormatter.formatDouble(acc.currentBalance)})") },
                                 onClick = { selectedFrom = acc; fromExpanded = false }
                             )
                         }
@@ -100,7 +100,7 @@ fun TransferDialog(
                     ExposedDropdownMenu(expanded = toExpanded, onDismissRequest = { toExpanded = false }) {
                         accounts.forEach { acc ->
                             DropdownMenuItem(
-                                text = { Text("${acc.accountName} ($${String.format("%.2f", acc.currentBalance)})") },
+                                text = { Text("${acc.accountName} ($${AmountFormatter.formatDouble(acc.currentBalance)})") },
                                 onClick = { selectedTo = acc; toExpanded = false }
                             )
                         }

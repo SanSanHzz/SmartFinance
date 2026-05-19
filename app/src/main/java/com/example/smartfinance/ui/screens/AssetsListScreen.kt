@@ -36,6 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.smartfinance.R
 import com.example.smartfinance.data.model.TransactionEntity
+import com.example.smartfinance.util.AmountFormatter
 import com.example.smartfinance.data.model.TransactionType
 import com.example.smartfinance.ui.theme.CriticalRed
 import com.example.smartfinance.ui.theme.DarkBackground
@@ -149,7 +150,7 @@ private fun TransactionItem(
                 }
             }
             Text(
-                text = "$${String.format("%.2f", transaction.amount)}",
+                text = "$${AmountFormatter.formatDouble(transaction.amount)}",
                 style = MaterialTheme.typography.titleMedium,
                 color = color,
                 modifier = Modifier.padding(end = 8.dp)

@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import com.example.smartfinance.R
 import com.example.smartfinance.data.model.AccountEntity
 import com.example.smartfinance.data.model.TransactionType
+import com.example.smartfinance.util.AmountFormatter
 import com.example.smartfinance.ui.components.RingChart
 import com.example.smartfinance.ui.theme.CriticalRed
 import com.example.smartfinance.ui.theme.DarkBackground
@@ -297,7 +298,7 @@ private fun AccountCard(account: AccountEntity) {
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "$${String.format("%.2f", account.currentBalance)}",
+                text = "$${AmountFormatter.formatDouble(account.currentBalance)}",
                 style = MaterialTheme.typography.titleLarge,
                 color = DarkOnSurface
             )
@@ -317,7 +318,7 @@ private fun NetWorthChip(totalNetWorth: Double) {
                 color = DarkOnSurfaceVariant
             )
             Text(
-                text = "$${String.format("%.2f", totalNetWorth)}",
+                text = "$${AmountFormatter.formatDouble(totalNetWorth)}",
                 style = MaterialTheme.typography.titleSmall,
                 color = Teal
             )
@@ -335,7 +336,7 @@ private fun FinancialCard(label: String, amount: Double, color: Color) {
             Text(text = label, style = MaterialTheme.typography.labelMedium, color = color)
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "$${String.format("%.2f", amount)}",
+                text = "$${AmountFormatter.formatDouble(amount)}",
                 style = MaterialTheme.typography.titleLarge,
                 color = DarkOnSurface
             )

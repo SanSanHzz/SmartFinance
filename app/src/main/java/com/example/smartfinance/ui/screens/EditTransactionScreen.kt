@@ -158,7 +158,7 @@ fun EditTransactionScreen(
                 ExposedDropdownMenu(expanded = accountExpanded, onDismissRequest = { accountExpanded = false }) {
                     accounts.forEach { acc ->
                         DropdownMenuItem(
-                            text = { Text("${acc.accountName} ($${String.format("%.2f", acc.currentBalance)})") },
+                            text = { Text("${acc.accountName} ($${AmountFormatter.formatDouble(acc.currentBalance)})") },
                             onClick = { selectedAccount = acc; accountExpanded = false }
                         )
                     }

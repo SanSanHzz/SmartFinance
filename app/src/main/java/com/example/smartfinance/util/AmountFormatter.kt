@@ -23,6 +23,12 @@ object AmountFormatter {
         val normalized = formatted.replace(".", "").replace(",", ".")
         return normalized.toDoubleOrNull()
     }
+
+    fun formatDouble(value: Double): String {
+        val withDecimals = String.format("%.2f", value) // "3200.50"
+        val withComma = withDecimals.replace('.', ',')   // "3200,50"
+        return format(withComma)                          // "3.200,50"
+    }
 }
 
 class AmountVisualTransformation : VisualTransformation {
@@ -32,25 +38,25 @@ class AmountVisualTransformation : VisualTransformation {
         if (formatted == raw) {
             return TransformedText(text, OffsetMapping.Identity)
         }
-        val offset = formatted.length.coerceAtMost(text.length)
         return TransformedText(
             AnnotatedString(formatted),
             object : OffsetMapping {
                 override fun originalToTransformed(offset: Int): Int {
-                    if (offset >= formatted.length) return formatted.length
-                    val rawSoFar = text.text.take(offset)
+                    if (offset >= raw.length) return formatted.length
+                    val rawSoFar = raw.take(offset)
                     val digitsCount = rawSoFar.count { it.isDigit() || it == ',' }
-                    return AmountFormatter.format(rawSoFar).length
+                    val result = AmountFormatter.format(rawSoFar)
+                    return result.length
                 }
 
                 override fun transformedToOriginal(offset: Int): Int {
-                    if (offset >= formatted.length) return formatted.length
+                    if (offset >= formatted.length) return raw.length
                     val formattedSoFar = formatted.take(offset)
                     val digitsCount = formattedSoFar.count { it.isDigit() || it == ',' }
-                    var matches = 0
+                    var found = 0
                     for (i in raw.indices) {
-                        if (raw[i].isDigit() || raw[i] == ',') matches++
-                        if (matches == digitsCount) return i + 1
+                        if (raw[i].isDigit() || raw[i] == ',') found++
+                        if (found == digitsCount) return i + 1
                     }
                     return raw.length
                 }
