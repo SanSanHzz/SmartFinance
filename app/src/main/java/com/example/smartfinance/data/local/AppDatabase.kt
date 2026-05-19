@@ -9,7 +9,7 @@ import com.example.smartfinance.data.model.TransactionEntity
 
 @Database(
     entities = [TransactionEntity::class, AccountEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

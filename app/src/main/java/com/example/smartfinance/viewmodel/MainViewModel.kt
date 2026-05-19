@@ -211,20 +211,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun seedSampleData() {
         viewModelScope.launch {
-            val dao = AppDatabase.getDatabase(getApplication()).transactionDao()
-            val samples = listOf(
-                TransactionEntity(type = TransactionType.Income, name = "Salary", amount = 3200.0, category = "Salary", destinationAccountId = 1),
-                TransactionEntity(type = TransactionType.Income, name = "Freelance", amount = 500.0, category = "Salary", destinationAccountId = 1),
-                TransactionEntity(type = TransactionType.Expense, name = "Burger", amount = 12.50, category = "Food", sourceAccountId = 1),
-                TransactionEntity(type = TransactionType.Expense, name = "Pizza", amount = 18.00, category = "Food", sourceAccountId = 1),
-                TransactionEntity(type = TransactionType.Expense, name = "Uber", amount = 8.50, category = "Transport", sourceAccountId = 1),
-                TransactionEntity(type = TransactionType.Expense, name = "Netflix", amount = 15.99, category = "Entertainment", sourceAccountId = 1),
-                TransactionEntity(type = TransactionType.Expense, name = "Amazon Box", amount = 45.00, category = "Online Shopping", sourceAccountId = 1),
-                TransactionEntity(type = TransactionType.Expense, name = "Gas", amount = 40.00, category = "Transport", sourceAccountId = 1),
-                TransactionEntity(type = TransactionType.Expense, name = "Temu", amount = 23.00, category = "Online Shopping", sourceAccountId = 1),
-                TransactionEntity(type = TransactionType.Expense, name = "Coffee", amount = 4.50, category = "Food", sourceAccountId = 1),
-            )
-            samples.forEach { dao.insertTransactionOnly(it) }
+            val r = repository
+            r.insertIncome(TransactionEntity(type = TransactionType.Income, name = "Salary", amount = 3200.0, category = "Salary", destinationAccountId = 1), 1)
+            r.insertIncome(TransactionEntity(type = TransactionType.Income, name = "Freelance", amount = 500.0, category = "Salary", destinationAccountId = 1), 1)
+            r.insertExpense(TransactionEntity(type = TransactionType.Expense, name = "Burger", amount = 12.50, category = "Food", sourceAccountId = 1), 1)
+            r.insertExpense(TransactionEntity(type = TransactionType.Expense, name = "Pizza", amount = 18.00, category = "Food", sourceAccountId = 1), 1)
+            r.insertExpense(TransactionEntity(type = TransactionType.Expense, name = "Uber", amount = 8.50, category = "Transport", sourceAccountId = 1), 1)
+            r.insertExpense(TransactionEntity(type = TransactionType.Expense, name = "Netflix", amount = 15.99, category = "Entertainment", sourceAccountId = 1), 1)
+            r.insertExpense(TransactionEntity(type = TransactionType.Expense, name = "Amazon Box", amount = 45.00, category = "Online Shopping", sourceAccountId = 1), 1)
+            r.insertExpense(TransactionEntity(type = TransactionType.Expense, name = "Gas", amount = 40.00, category = "Transport", sourceAccountId = 1), 1)
+            r.insertExpense(TransactionEntity(type = TransactionType.Expense, name = "Temu", amount = 23.00, category = "Online Shopping", sourceAccountId = 1), 1)
+            r.insertExpense(TransactionEntity(type = TransactionType.Expense, name = "Coffee", amount = 4.50, category = "Food", sourceAccountId = 1), 1)
         }
     }
 }
